@@ -9,98 +9,132 @@ class SchoolAssessmentSystem:
     def __init__(self):
         self.dataset = pd.DataFrame()
 
-    def process_file(self, file_path):
+    def process_file(self, file_path, file_format):
         try:
-            if file_path.endswith('.csv'):
-                data = pd.read_csv(file_path)
-            elif file_path.endswith('.xlsx'):
+            data = None  # Initialize data outside of the conditional block
+            if file_format == 'csv':
+                data = pd.read_csv(file_path)  # Remove skiprows=1
+            elif file_format == 'excel':
                 data = pd.read_excel(file_path)
+            elif file_format == 'text':
+                with open(file_path, 'r') as text_file:
+                    # Assuming each line in the text file represents a record
+                    lines = text_file.readlines()
+                    data = [line.strip().split(',') for line in lines]
+
+                # Convert the list of lists to a DataFrame
+                data = pd.DataFrame(data, columns=['Student', 'Subject', 'Score'])
             else:
-                with open(file_path, 'r') as file:
-                    data = file.read()
-            return data
+                raise ValueError("Unsupported file format")
+
+            self.dataset = pd.concat([self.dataset, data], ignore_index=True)
+            print(f"File '{file_path}' processed successfully.")
+            print("Dataset columns:", self.dataset.columns)  # Add this line
+
+        except FileNotFoundError:
+            print(f"Error: File '{file_path}' not found.")
+        except PermissionError:
+            print(f"Error: Permission denied. Check read permissions for '{file_path}'.")
         except Exception as e:
             print(f"Error processing file: {e}")
-            return None
 
-    def transfer_data(self, source_data, destination_file):
+    
+
+    def transfer_data(self, criteria):
         try:
-            if isinstance(source_data, pd.DataFrame):
-                # For DataFrame, save to CSV
-                source_data.to_csv(destination_file, index=False)
-            else:
-                # For plain text, write to destination file
-                with open(destination_file, 'w') as file:
-                    file.write(source_data)
+            # Example: Transfer students with scores above a certain threshold to another file
+            threshold = criteria.get("threshold", 90)
+            high_scorers = self.dataset[self.dataset['Score'] > threshold]
+            
+            # Save the high-scorers to a new file
+            high_scorers.to_csv("high_scorers.csv", index=False)
+
         except Exception as e:
             print(f"Error transferring data: {e}")
 
     def fetch_web_data(self, url):
         try:
             with urlopen(url) as response:
+                # Placeholder logic to read HTML content from the webpage
                 web_data = response.read()
-            web_data_df = pd.read_csv(pd.compat.StringIO(web_data.decode('utf-8')))
-            return web_data_df
+                print("Web data fetched successfully.")
+
         except Exception as e:
             print(f"Error fetching web data: {e}")
-            return None
 
+   
     def analyze_content(self):
         try:
-            self.dataset['Average Score'] = self.dataset.mean(axis=1)
+            if 'Score' in self.dataset.columns:
+                average_score = self.dataset['Score'].mean()
+                print(f"\nAverage Overall Score: {average_score}\n")
+
+                # Subject-wise analysis
+                print("Subject-wise Analysis:")
+                for subject in self.dataset['Subject'].unique():
+                    subject_data = self.dataset[self.dataset['Subject'] == subject]
+                    subject_avg_score = subject_data['Score'].mean()
+                    print(f"   - {subject}: Average Score - {subject_avg_score}")
+
+            else:
+                raise ValueError("Error analyzing content: 'Score' column not found in the dataset.")
+
         except Exception as e:
             print(f"Error analyzing content: {e}")
 
     def generate_summary(self):
         try:
-            print("School Assessment Summary Report:\n")
-            if not self.dataset.empty:
-                for index, row in self.dataset.iterrows():
-                    print(f"{index + 1}. Overall Performance of Student {index + 1}:\n   - Average score: {row['Average Score']}")
+            if 'Student' in self.dataset.columns:
+                print("\nSchool Assessment Summary Report:\n")
+
+                # Individual Student Performance
+                print("Individual Student Performance:")
+                for student in self.dataset['Student'].unique():
+                    student_data = self.dataset[self.dataset['Student'] == student]
+                    student_avg_score = student_data['Score'].mean()
+                    top_subject = student_data.loc[student_data['Score'].idxmax()]['Subject']
+                    print(f"   - {student}: Average Score - {student_avg_score}, Top Subject - {top_subject}")
+
+                # Subject-wise Analysis
+                print("\nSubject-wise Analysis:")
+                for subject in self.dataset['Subject'].unique():
+                    subject_data = self.dataset[self.dataset['Subject'] == subject]
+                    subject_avg_score = subject_data['Score'].mean()
+                    print(f"   - {subject}: Average Score - {subject_avg_score}")
+
+                # Recommendations
+                print("\nRecommendations:")
+                for subject in self.dataset['Subject'].unique():
+                    subject_data = self.dataset[self.dataset['Subject'] == subject]
+                    low_performers = subject_data[subject_data['Score'] < 70]
+                    if not low_performers.empty:
+                        print(f"   - Consider additional support for students in {subject}")
+
+                # Web Data Insights
+                print("\nWeb Data Insights:")
+                # Placeholder for web data insights
+
+                # Report Date
+                print(f"\nReport generated on: {datetime.date.today()}")
+
             else:
-                print("No data available for summary.")
-            print(f"\nReport generated on: {datetime.datetime.now().strftime('%Y-%m-%d')}")
+                raise ValueError("Error generating summary: 'Student' column not found in the dataset.")
+
         except Exception as e:
             print(f"Error generating summary: {e}")
 
-# Example usage with user input for file name:
-assessment_system = SchoolAssessmentSystem()
-
-try:
-    # Prompt user for the file name
-    file_name = input("Enter the file name (including path or URL) to process: ")
-
-    # Process the file
-    file_data = assessment_system.process_file(file_name)
-
-    if file_data is not None:
-        # Set the destination file path
-        destination_file = 'output_summary.csv'
-
-        # Transfer data from the file to the destination file
-        assessment_system.transfer_data(file_data, destination_file)
-
-        # Fetch web data from the provided URL
-        web_data_url = 'https://example.com/school_assessment_data.csv'
-        web_data = assessment_system.fetch_web_data(web_data_url)
-
-        if web_data is not None:
-            # Transfer web data to the destination file
-            assessment_system.transfer_data(web_data, destination_file)
-
-            # Analyze content and generate a summary
-            assessment_system.analyze_content()
-            assessment_system.generate_summary()
-
-except KeyboardInterrupt:
-    print("\nOperation aborted by the user.")
-except Exception as e:
-    print(f"An unexpected error occurred: {e}")
+# Example Usage:
+school_system = SchoolAssessmentSystem()
+school_system.process_file("sample.csv", "csv")
+school_system.transfer_data(criteria={"threshold": 90})
+school_system.fetch_web_data("https://schoolwebsite.com/assessment")
+school_system.analyze_content()
+school_system.generate_summary()
 
 
 # Analyze content & display result area
 # Sample of Output:
-"""
+""" 
 School Assessment Summary Report:
 
 1. Overall Performance of Student A:

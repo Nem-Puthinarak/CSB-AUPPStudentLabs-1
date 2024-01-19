@@ -18,33 +18,54 @@ Data structures to consider:
        Tuples, Sets, Lists, Dictionaries, Trees, Graphs, Stacks, Queues
 """
 # Prototype code, you can follow different implementation process
-
-class Song:
-    def __init__(self, title, artist, album, genre, length):
-
 class MusicLibrary:
     def __init__(self):
+        self.songs = {}
 
     def add_song(self, song):
-      
+        key = (song.title, song.artist, song.album)
+        if key not in self.songs:
+            self.songs[key] = song
+
     def get_songs_by_artist(self, artist):
+        return [song for song in self.songs.values() if song.artist == artist]
 
     def get_songs_by_album(self, album):
-        
+        return [song for song in self.songs.values() if song.album == album]
+
     def get_songs_by_genre(self, genre):
-      
+        return [song for song in self.songs.values() if song.genre == genre]
+
     def get_songs_by_title(self, title):
+        return [song for song in self.songs.values() if song.title == title]
 
 class Playlist:
     def __init__(self, name):
+        self.name = name
+        self.songs = []
 
     def add_song(self, song):
+        if song not in self.songs:
+            self.songs.append(song)
 
     def remove_song(self, song):
+        if song in self.songs:
+            self.songs.remove(song)
 
     def reorder_songs(self, new_order):
+        self.songs = list(set(new_order))
 
     def display_playlist(self):
+        print(f"Playlist: {self.name}")
+        for i, song in enumerate(self.songs, 1):
+            print(f"{i}. {song.title} - {song.artist}")
+
+        print(f"\nSongs by {self.name}:")
+        for song in self.songs:
+            print(f"{song.title} - {song.album}")
+
+
+
 
 # Main Requirement:
 # Create song example
@@ -57,9 +78,9 @@ class Playlist:
 # Searching for songs by artist
 
 # Sample Output:
-Playlist: My Playlist 1
+'''Playlist: My Playlist 1
 1. Song 1 - Artist 1
 2. Song 2 - Artist 2
 
 Songs by Artist 1:
-Song 1 - Album 1
+Song 1 - Album 1'''
